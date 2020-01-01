@@ -1,0 +1,9 @@
+.itemconfiguration {
+    height: 700px;
+    /* background-color:#CCC; */
+    overflow-y: auto;
+    float: left;
+    position: relative;
+    margin-left: -5px;
+  }
+  
