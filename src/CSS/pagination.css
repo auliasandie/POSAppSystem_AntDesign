@@ -1,4 +1,6 @@
 .pagination {
+  position: absolute;
+  bottom: 1;
     display: inline-block;
     padding-bottom: 2%;
   }

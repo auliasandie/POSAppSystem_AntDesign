@@ -12,16 +12,17 @@ import {
   InputNumber
 } from "antd";
 import axios from "axios";
-// import addModal from "./addModal"
-
-// import MenuFood from "../Helpers/Menu";
+import Login from './Login';
 import Meta from "antd/lib/card/Meta";
 import "../Style/Home.css";
 import Title from "antd/lib/typography/Title";
 import { Route, BrowserRouter, Switch, Link} from 'react-router-dom';
 import History from './History';
-import addModal from './addModal'
+// import addModal from './addModal'
 import ModalAdd from "./ModalAdd";
+import Logout from './Logout';
+import Pagination from './Pagination';
+
 const { Header, Content, Footer, Sider } = Layout;
 
 export default class Sidebar extends React.Component {
@@ -31,9 +32,12 @@ export default class Sidebar extends React.Component {
       collapsed: false,
       cartItem: [],
       products: [],
+      currentPage: 1,
+      postsPerPage: 6,
       clicks: 0,
       show: true,
-      size: "large"
+      size: "large",
+      sortby: "name"
     };
   }
   sendBackData = count => {
@@ -46,7 +50,7 @@ export default class Sidebar extends React.Component {
       )
     });
 
-    // this.props.parentCallback(count + 1)
+  
   }
   handleSizeChange = e => {
     this.setState({ size: e.target.value });
@@ -72,6 +76,7 @@ export default class Sidebar extends React.Component {
     cartItemCopy[index].qty--;
     this.setState({ cartItem: cartItemCopy });
   };
+
   componentDidMount() {
     axios
       .get("http://localhost:8000/product/")
@@ -84,9 +89,19 @@ export default class Sidebar extends React.Component {
       });
   }
 
-  showModal(){
+  showModalAdd(){
     this.refs.childadd.showModalAdd()
   }
+
+  showModalLogin(){
+    this.refs.childlogin.showModalLogin()
+  }
+
+  showModalLogout(){
+    this.refs.childlogout.showModalLogout()
+  }
+
+  
 
   render() {
     console.log("ini data product dari database ", this.state.products);
@@ -95,6 +110,14 @@ export default class Sidebar extends React.Component {
       (totals, sum) => totals + sum.qty * sum.price,
       0
     );
+    const indexOflastpost = this.state.currentPage * this.state.postsPerPage;
+    const indexOffirstPost = indexOflastpost - this.state.postsPerPage;
+    const currentPost = this.state.cartItem.slice(
+      indexOffirstPost,
+      indexOflastpost
+    );
+
+
 
     console.log("Ini cart:", this.state.cartItem);
     const { size } = this.state;
@@ -102,6 +125,8 @@ export default class Sidebar extends React.Component {
     return (
       <Layout style={{ minHeight: "100vh" }}>
           <ModalAdd ref="childadd" />
+          <Login ref="childlogin" />
+          <Logout ref="childlogout" />
         <Sider
           collapsible
           collapsed={this.state.collapsed}
@@ -123,20 +148,28 @@ export default class Sidebar extends React.Component {
               </Link>
             </Menu.Item>
             <Menu.Item onClick={() => {
-                this.showModal();
+                this.showModalAdd();
               }}>
               <Icon type="plus" />
               <span>Add Menu</span>
             
             </Menu.Item>
-            <Menu.Item>
-              <Icon type="login" />
-              <span>Edit Menu</span>
+            {localStorage.token ? 
+            <Menu.Item onClick={() => {
+              this.showModalLogout();
+            }}>
+              <Icon type="logout" />
+              <span>Log out</span>
             </Menu.Item>
-            <Menu.Item>
+            :
+             
+            <Menu.Item onClick={() => {
+              this.showModalLogin();
+            }}>
               <Icon type="login" />
               <span>Admin Login</span>
             </Menu.Item>
+  }
           </Menu>
         </Sider>
         <Switch>
@@ -144,7 +177,7 @@ export default class Sidebar extends React.Component {
         <Route path="/home" component={Contents}/>
         <Route path="/history" component={History}/>
       </Switch>
-        {/* <Contents /> */}
+
       </Layout>
     );
   }

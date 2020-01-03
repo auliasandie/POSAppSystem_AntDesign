@@ -1,12 +1,16 @@
 import React from "react";
-import { Layout, Row, Col, Card, Button, InputNumber } from "antd";
+import { Layout, Row, Col, Card, Button, InputNumber, Input, Select } from "antd";
 import axios from "axios";
 import Checkout from "./Checkout";
 // import MenuFood from "../Helpers/Menu";
 import Meta from "antd/lib/card/Meta";
 import "../Style/Home.css";
 import Title from "antd/lib/typography/Title";
+import ModalEdit from './ModalEdit';
+import Pagination from './Pagination';
 const { Header, Content } = Layout;
+const { Search } = Input;
+const { Option } = Select;
 
 export default class Contents extends React.Component {
   constructor(props) {
@@ -19,9 +23,17 @@ export default class Contents extends React.Component {
       show: true,
       size: "large",
       visible: false,
+      search: "",
+      orderby: "",
+      MaxProduct:'',
+      currentPage: 1,
+      postsPerPage: 6,
+      dataParams: {search:"", page: ''},
+      sortby: "name_product",
       dataCheckout: []
     };
   }
+
   sendBackData = count => {
     this.props.parentCallback(count + 1);
   };
@@ -57,6 +69,23 @@ export default class Contents extends React.Component {
     this.setState({ cartItem: cartItemCopy });
   };
 
+  showModalEdit(d) {
+    this.setState({
+      edit_id: d.id,
+      edit_name_product: d.name_product,
+      edit_price_product: d.price_product,
+      edit_category_name: d.category_name,
+      edit_image_product: d.image_product
+    });
+    this.refs.childEdit.showModalEdit(
+      d.id,
+      d.name_product,
+      d.price_product,
+      d.category_name,
+      d.image_product
+    );
+  }
+
   showModal = () => {
     this.setState({
       visible: true,
@@ -68,12 +97,13 @@ export default class Contents extends React.Component {
       visible: false
     });
   };
+  
   componentDidMount() {
     axios
-      .get("http://localhost:8000/product")
+      .get("http://localhost:8000/product",)
       .then(response => {
         console.log(response.data);
-        this.setState({ products: response.data.message.data });
+        this.setState({ products: response.data.message.data, productsShow: response.data.message.data });
       })
       .catch(function(error) {
         console.log(error);
@@ -81,26 +111,85 @@ export default class Contents extends React.Component {
   }
 
   render() {
-    // console.log("ini data product dari database ", this.state.products);
-
+    const indexOflastpost = this.state.currentPage * this.state.postsPerPage;
+    const indexOffirstPost = indexOflastpost - this.state.postsPerPage;
+    const currentPost = this.state.products.slice(
+      indexOffirstPost,
+      indexOflastpost
+    );
+ 
     const total = this.state.cartItem.reduce(
       (totals, sum) => totals + sum.qty * sum.price_product,
       0
     );
     const ppn = total * 0.1;
 
+
+    
+
+    const products = this.state.products;
+    console.log("INI PRODUCT", products);
+
+   
+
+   
+    const handleChange = event => {
+      this.setState( {
+          dataParams: {
+            ...this.state.dataParams, 
+            [event.target.name]: event.target.value , 
+            page: 1
+          }
+        
+      })
+    };
+
+    const handleChangeOrder = async value => {
+      await axios
+      .get(`http://localhost:8000/product?orderby=${value}`,)
+      .then(response => {
+        console.log(response.data);
+        this.setState({ products: response.data.message.data, productsShow: response.data.message.data });
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+    };
+
+
+    const fetchData = async (dataParams = {}) => {
+      console.log(dataParams, 'DATA PARAMSSS')
+      const getData = axios
+      .get(`http://localhost:8000/product?value=${dataParams}`)
+      .then(response => {
+        console.log(response, 'YUHUUUUU');
+        this.setState({ products: response.data.message.data });
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+  
+    };
+
+    const onSearch = value => {
+
+      console.log('value', value)
+      fetchData(value);
+    };
+  
+
     // console.log("Ini cart:", this.state.cartItem);
     const { size } = this.state;
-    // console.log("teeeeeeeeeest", this.state.cartItem);
-    // const dataCheckout = this.state.cartItem;
-    // console.log(this.state.dataCheckout, "checkxxxxxxxxxxxxxxxxxxxxxx");
+
     const formatter = new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 2
     });
+    // console.log(qty, 'INI QUANTITY')
     return (
       <Layout>
+         <ModalEdit ref="childEdit" />
         <Checkout
           ppn={ppn}
           total={total}
@@ -124,9 +213,28 @@ export default class Contents extends React.Component {
                 </h3>
               </div>
             </Col>
-            <Col span={1}>
-              <Button shape="circle" icon="search" />
-            </Col>
+          
+            <Row span={1}>
+              <Col span={4}>
+  
+            <Select style={{width:'60%'}} defaultValue="Ascending" value={this.state.dataParams.sortby} onChange={handleChangeOrder}>
+            <Option value="asc">Ascending</Option>
+            <Option value="desc">Descending</Option>
+          </Select> 
+          </Col>
+          
+      
+        
+                <Search
+                  placeholder="Search Product"
+                  value={this.state.dataParams.search}
+                  name='search'
+                  onSearch={value => onSearch(value)}
+                  onChange={handleChange}
+                  enterButton
+                  style={{ width: 200, marginTop: 16 }} 
+                />
+            </Row>
             <Col span={9}>
               <h3
                 style={{
@@ -151,7 +259,7 @@ export default class Contents extends React.Component {
                 }}
               >
                 <Row gutter={16}>
-                  {this.state.products.map((d, index) => {
+                  {currentPost.map((d, index) => {
                     return (
                       <Col span={8}>
                         <Card
@@ -198,10 +306,27 @@ export default class Contents extends React.Component {
                             />
                           }
                         >
+
                           <Meta
                             title={d.name_product}
                             description={formatter.format(d.price_product)}
                           />
+                          
+                          {localStorage.token ? (
+                            <div>
+                              <div style={{ padingTop: 10}}>
+                                <Button type="primary"
+                                style={{width: "100%", marginTop: 10}}
+                                onClick={() => {
+                                  this.showModalEdit(d);
+                                }}>
+                                  Edit
+                                </Button>
+                              </div>
+                          </div> ) : ("")
+                          }
+
+
                           {this.state.cartItem.filter(cart => d.id === cart.id)
                             .length > 0 && (
                             <img
@@ -209,19 +334,44 @@ export default class Contents extends React.Component {
                                 position: "absolute",
                                 bottom: "50%",
                                 left: "25%",
-                                paddingLeft: 10
+                                // paddingLeft: 10
                               }}
                               width="50%"
-                              src="https://image.flaticon.com/icons/png/512/443/443138.png"
+                              src="https://res.cloudinary.com/auliasandie/image/upload/v1577949860/Assets%20Wagyu/verified_1_iadok2.png"
                             />
                           )}
                         </Card>
                       </Col>
                     );
                   })}
+               
                 </Row>
+                <center>
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "10px",
+                  margin: "auto",
+                  left: 0,
+                  right: 0
+                }}
+              >
+     
+                <Pagination
+                  currentPage={this.state.currentPage}
+                  totalPosts={this.state.products.length}
+                  postsPerPage={this.state.postsPerPage}
+                  paginate={pagenumbers =>
+                    this.setState({ currentPage: pagenumbers })
+                  }
+                />
               </div>
+            </center>
+               
+              </div>
+              
             </Content>
+           
           </Col>
           <Col span={7}>
             <Content style={{ margin: "24px 16px 0" }}>
@@ -233,6 +383,8 @@ export default class Contents extends React.Component {
                     minHeight: 200
                   }}
                 >
+               
+                  
                   {this.state.cartItem.length > 0 ? (
                     this.state.cartItem.map((cartcontent, index) => {
                       return (
@@ -269,7 +421,8 @@ export default class Contents extends React.Component {
                                       {cartcontent.qty == 0
                                         ? this.removeCartItem(cartcontent.id)
                                         : formatter.format(
-                                            cartcontent.price_product * cartcontent.qty
+                                            cartcontent.price_product *
+                                              cartcontent.qty
                                           )}
                                     </p>
                                   </Title>
@@ -313,16 +466,19 @@ export default class Contents extends React.Component {
                       );
                     })
                   ) : (
-                    <div style={{ paddingTop: "40%" }}>
+                    <div style={{ paddingTop: "40%", marginBottom: '100%' }}>
                       <img
-                        src={require("../Assets/cartempty.png")}
+                        src={require("../Assets/empty-cart-rappi.png")}
                         style={{
                           objectFit: "cover",
                           width: "100%",
-                          height: "100%"
+                          height: "100%",
+                          
                         }}
                       />
+                      <p style={{fontWeight: 'bold'}}>CART EMPTY</p>
                     </div>
+                    
                   )}
                 </div>
               </div>
@@ -340,14 +496,29 @@ export default class Contents extends React.Component {
               width: "30%"
             }}
           >
+               
             {this.state.cartItem.length > 0 ? (
               <Card style={{ width: "100%", marginTop: "5%" }}>
                 <Row>
                   <Col span={16}>
-                    <p style={{textAlign:'left', fontSize:20, fontWeight:'bold'}}level={4}>Total : </p>
+                    <p
+                      style={{
+                        textAlign: "left",
+                        fontSize: 20,
+                        fontWeight: "bold"
+                      }}
+                      level={4}
+                    >
+                      Total :{" "}
+                    </p>
                   </Col>
                   <Col span={4}>
-                    <p style={{fontWeight: 'bold', marginRight: 70}}level={4}>{formatter.format(total)}*</p>
+                    <p
+                      style={{ fontWeight: "bold", marginRight: 70 }}
+                      level={4}
+                    >
+                      {formatter.format(total)}*
+                    </p>
                   </Col>
                 </Row>
 
@@ -397,6 +568,7 @@ export default class Contents extends React.Component {
             )}
           </Col>
         </Row>
+       
       </Layout>
     );
   }

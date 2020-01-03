@@ -30,7 +30,7 @@ class ModalAdd extends React.Component {
 
   showModalAdd = () => {
     this.setState({
-      visible: true
+      visible: true,
     });
   };
 
